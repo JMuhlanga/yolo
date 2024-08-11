@@ -29,9 +29,9 @@
 
     - name: Clone the repository
       git:
-        repo: "{{ repository_url }}"
+        repo: "https://github.com/JMuhlanga/yolo"
         dest: /home/vagrant/yolo
-        version: "{{ repository_version }}"
+        version: "https://github.com/JMuhlanga/yolo"
 
     - name: Copy hosts file
       copy:

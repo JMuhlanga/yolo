@@ -1,0 +1,57 @@
+---
+- name: Provision server and deployment
+  hosts: all
+  become: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Update
+      apt:
+        update_cache: yes
+
+    - name: Install Docker and Docker Compose
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+        state: present
+
+    - name: Create Docker network
+      docker_network:
+        name: "{{ network_name }}"
+        state: present
+
+    - name: Create MongoDB volume
+      docker_volume:
+        name: "{{ mongodb_volume }}"
+        state: present
+
+    - name: Clone the repository
+      git:
+        repo: "{{ repository_url }}"
+        dest: /home/vagrant/yolo
+        version: "{{ repository_version }}"
+
+    - name: Copy hosts file
+      copy:
+        src: hosts
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy docker-compose file
+      copy:
+        src: docker-compose.yml
+        dest: /home/vagrant/yolo/docker-compose.yml
+
+    - name: Start services with Docker Compose
+      command: docker-compose up -d
+      args:
+        chdir: /home/vagrant/yolo
+
+  roles:
+    - yolo-backend
+    - mongodb
+    - yolo-frontend

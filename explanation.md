@@ -1,56 +1,167 @@
-# Setup Instructions
-## 1. Set Up Google Kubernetes Engine (GKE)
-#### 1. Authenticate with Google Cloud:
+## 1. Choice of Base Image
+The base image used to build the containers is `node:16-alpine`. It is derived from the Alpine Linux distribution, making it lightweight and compact.
+Used
+1. Client:`node:16-alpine3.16.7`
+2. Backend: `node:16-alpine3.18`
+   3.Mongo : `mongo:latest `
 
-        gcloud auth login
-#### 2. Set your project ID:
 
-        gcloud config set project yolo-ip4-orchestration
+## 2. Dockerfile directives used in the creation and running of each container.
+I used two Dockerfiles. One for the Client and the other one for the Backend.
 
-#### 3. Create a Kubernetes cluster:
+**Client Dockerfile**
 
-        gcloud container clusters create yolo-cluster --num-nodes=3 --zone=us-central1-a
-#### 4. Get credentials for the cluster:
+```
+# Use of multi-stage builds
+FROM node:16 AS build
 
-        gcloud container clusters get-credentials yolo-cluster
+# Set the working directory in the container
+WORKDIR /usr/src/app
 
-## 2. Deploy MongoDB using StatefulSets
-#### 1. Apply the MongoDB secret:
+# Copy the package.json and package-lock.json files to the container
+COPY package*.json ./
 
-        kubectl apply -f manifests/secrets/mongo-secrets.yaml
-#### 2. Create the headless service for MongoDB:
+# Install application dependencies
+RUN npm install
 
-        kubectl apply -f manifests/headless-service/headless-service.yaml
-#### 3. Deploy MongoDB StatefulSet:
+# Copy the rest of the application code to the container
+COPY . .
 
-        kubectl apply -f manifests/statefulset/mongo-statefulset.yaml
-## 3. Deploy Backend Service
-#### 1. Deploy the backend:
+FROM alpine:3.16.7
 
-        kubectl apply -f manifests/deployment/backend-deployment.yaml
-#### 2. Expose the backend service:
 
-        kubectl apply -f manifests/service/backend-service.yaml
+WORKDIR /app
 
-## 4. Deploy Frontend Service
-#### 1. Deploy the frontend:
+RUN apk update && apk add npm
 
-        kubectl apply -f manifests/deployment/frontend-deployment.yaml
-#### 2. Expose the frontend service:
+COPY --from=build /usr/src/app /app
 
-        kubectl apply -f manifests/service/frontend-service.yaml
+# Expose the port the app runs on
+EXPOSE 3000
 
-## 5. Verify the Deployment
-#### 1. Check the status of your pods:
+# Define the command to run your app
+CMD ["npm", "start"]
 
-        kubectl get pods
-#### 2. Check the status of your services:
 
-        kubectl get services
+```
+**Backend Dockerfile**
 
-## 6. Access Your Application
-Frontend Service: The frontend service is exposed via a LoadBalancer. Get the external IP address with:
+```
+# Use an official Node runtime as a parent image
+FROM node:16 AS build
 
-        kubectl get service yolo-frontend
+# Set the working directory in the container
+WORKDIR /usr/src/app
 
-Visit the external IP in your browser to access the frontend application.
+# Copy the package.json and package-lock.json files to the container
+COPY package*.json ./
+
+# Install application dependencies
+RUN npm install --production
+
+# Copy the rest of the application code to the container
+COPY . .
+
+#Add multi-stage build
+FROM alpine:3.18
+
+WORKDIR /app
+
+RUN apk update && apk add --update nodejs
+
+COPY --from=build /usr/src/app /app
+
+# Expose the port the app runs on
+EXPOSE 5000
+
+# Define the command to run your app
+CMD ["node", "server"]
+
+```
+
+## 3. Docker Compose Networking
+The (docker-compose.yml) defines the networking configuration for the project. It includes the allocation of application ports. The relevant sections are as follows:
+
+
+```
+services:
+  backend:
+    # ...
+    ports:
+      - "5000:5000"
+    networks:
+      - yolo-app-network
+
+  client:
+    # ...
+    ports:
+      - "3000:3000"
+    networks:
+      - yolo-app-network
+  
+  mongodb:
+    # ...
+    ports:
+      - "27017:27017"
+    networks:
+      - yolo-app-network
+
+networks:
+  yolo-app-network:
+    driver: bridge
+```
+In this configuration, the backend container is mapped to port 5000 of the host, the frontend container is mapped to port 3000 of the host, and mongo container is mapped to port 27017 of the host. All containers are connected to the yolo-app-network bridge network.
+
+
+## 4.  Docker Compose Volume Definition and Usage
+The Docker Compose file includes volume definitions for MongoDB data storage. The relevant section is as follows:
+
+yml
+
+```
+volumes:
+  mongo_data:  
+    driver: local
+
+```
+This volume, mongodb_data, is designated for storing MongoDB data. It ensures that the data remains intact and is not lost even if the container is stopped or deleted.
+
+## 5. Git Workflow to achieve the task
+
+To achieve the task the following git workflow was used:
+
+1. Fork the repository from the original repository.
+2. Clone the repo: `git@github.com:Maubinyaachi/yolo-Microservice.git`
+3. Create a .gitignore file to exclude unnecessary     files and directories from version control.
+4. Create Dockefile for client
+5. Create Dockerfile for backend
+6. Create docker-compose.yml
+7. Added all the changes
+   `git add .`
+8. Committed the changes:
+   `git commit -m "Added added all changes"`
+9. Pushed the files to github:
+   `git push `
+10. Built the client and backend images:
+    `docker compose build`
+11. Pushed the built imags to docker registry:
+    `docker compose push`
+12. Deployed the containers using docker compose:
+    `docker compose up`
+
+## 6. Screenshot of the deployed image on DockerHub
+
+[The link to the dockerhub repository](https://hub.docker.com/repositories/p801)
+
+### Screenshots
+
+#### 1. Dockerhub repository
+![yolo dockerhub](https://github.com/user-attachments/assets/2131ae76-ec64-40c2-9d9a-ea4feed0dde6)
+
+#### 2. Dockerhub frontend image with size
+![yolo frontend size](https://github.com/user-attachments/assets/1331afcd-a04f-4b05-857d-fea620dda553)
+
+#### 3. Dockerhub backend image with size
+![yolo backend size](https://github.com/user-attachments/assets/dbef039e-ea0e-480f-b776-01983074d5d9)
+
+

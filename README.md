@@ -79,3 +79,41 @@ In order to run the application, in the root of the project within the terminal 
 ```
 vagrant up 
 ```
+
+## VIA Orchestration - IP4
+
+### Requirements
+
+1. Docker as mentioned above
+2. Kubectl - CLI tool for Kubernetes
+3. GCloud - Via SDK for GCP
+
+### Project Structure
+
+Below is a folder structure tree breaking down the orchestration project structure 
+
+    Yolo
+      ├── /manifests
+      │   ├── /deployment
+      │   │   ├── backend-deployment.yaml
+      │   │   └── frontend-deployment.yaml
+      │   │
+      │   ├── /headless-service
+      │   │   └── headless-service.yaml
+      │   │
+      │   ├── /secrets
+      │   │   └── mongo-secrets.yaml
+      │   │
+      │   ├── /service
+      │   │   ├── backend-service.yaml
+      │   │   └── frontend-service.yaml
+      │   │
+      │   ├── /statefulset
+      │   │   └── mongo-statefulset.yaml
+
+
+### Instructions on how to run orchestration 
+
+In order to run the orchestration project kindly follow instructions within the file below:
+
+-[Instructions](/orchestration-explanation.md)
